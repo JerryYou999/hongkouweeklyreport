@@ -1,4 +1,5 @@
 import { bindings, getReport } from '@/lib/db';
+import { sanitizeReportHtml } from '@/lib/html';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,7 +8,8 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const report = await getReport(id);
   if (!report) return new Response('Not found', { status: 404 });
 
-  const object = await bindings().REPORTS_BUCKET.get(report.sanitized_key);
+  const objectKey = report.mime_type === 'application/pdf' ? report.sanitized_key : report.original_key;
+  const object = await bindings().REPORTS_BUCKET.get(objectKey);
   if (!object) return new Response('Not found', { status: 404 });
 
   const headers = new Headers();
@@ -17,6 +19,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   headers.set('Cache-Control', 'private, max-age=300');
   if (report.mime_type === 'text/html') {
     headers.set('Content-Security-Policy', "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'");
+  }
+  if (report.mime_type === 'text/html') {
+    // Re-sanitize the original at preview time so reports uploaded before the
+    // style-preservation fix regain their original embedded CSS as well.
+    return new Response(sanitizeReportHtml(await object.text()), { headers });
   }
   return new Response(object.body, { headers });
 }

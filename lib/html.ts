@@ -9,6 +9,7 @@ export type ParsedSection = {
 };
 
 const allowedTags = [
+  'html', 'head', 'body', 'title', 'meta', 'style',
   'article', 'section', 'main', 'header', 'footer', 'nav', 'div', 'span',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'strong', 'b',
   'em', 'i', 'u', 's', 'small', 'mark', 'sub', 'sup', 'ul', 'ol', 'li',
@@ -20,7 +21,9 @@ export function sanitizeReportHtml(input: string) {
   return sanitizeHtml(input, {
     allowedTags,
     allowedAttributes: {
-      '*': ['id', 'class', 'title'],
+      '*': ['id', 'class', 'title', 'style'],
+      html: ['lang', 'dir'],
+      meta: ['charset', 'name', 'content'],
       a: ['href'],
       img: ['src', 'alt', 'width', 'height'],
       td: ['colspan', 'rowspan'],
@@ -30,7 +33,8 @@ export function sanitizeReportHtml(input: string) {
     allowedSchemesByTag: { a: ['http', 'https', 'mailto'], img: ['data'] },
     allowProtocolRelative: false,
     disallowedTagsMode: 'discard',
-    nonTextTags: ['script', 'style', 'textarea', 'option', 'noscript'],
+    nonTextTags: ['script', 'textarea', 'option', 'noscript'],
+    allowVulnerableTags: true,
     transformTags: {
       a: (_tagName, attribs) => ({
         tagName: 'a',
