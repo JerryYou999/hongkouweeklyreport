@@ -1,5 +1,5 @@
 import { extractText, getDocumentProxy, getMeta } from 'unpdf';
-import type { ParsedSection } from '@/lib/html';
+import type { ParsedSection } from './html';
 
 const MAX_PDF_PAGES = 300;
 

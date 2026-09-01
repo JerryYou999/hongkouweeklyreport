@@ -12,7 +12,12 @@
     "lint": "oxlint app lib tests components/site-header.tsx components/report-card.tsx",
     "format": "oxfmt",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "github:dev": "vite --config github-web/vite.config.ts",
+    "github:build": "vite build --config github-web/vite.config.ts",
+    "worker:dev": "wrangler dev --config worker/wrangler.toml",
+    "worker:deploy": "wrangler deploy --config worker/wrangler.toml",
+    "worker:typecheck": "tsc --noEmit -p worker/tsconfig.json"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
