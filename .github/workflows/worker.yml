@@ -1,18 +1,6 @@
 name: Deploy Cloudflare Worker
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - worker/**
-      - lib/html.ts
-      - lib/pdf.ts
-      - lib/iso-week.ts
-      - lib/types.ts
-      - db/schema.ts
-      - package.json
-      - package-lock.json
-      - .github/workflows/worker.yml
   workflow_dispatch:
 
 jobs:
@@ -26,7 +14,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run worker:typecheck
-      - name: Deploy Worker
+      - name: Deploy Worker (requires repository secrets)
         run: npm run worker:deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

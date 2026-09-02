@@ -8,7 +8,7 @@ type Report = {
   tags_json: string; mime_type: string; plain_text: string; created_at: string;
 };
 type Section = { id: string; order_index: number; heading: string | null };
-const API = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787').replace(/\/$/, '');
+const API = (import.meta.env.VITE_API_BASE_URL || 'https://hongkou-weekly-report-api.jerryyou999.workers.dev').replace(/\/$/, '');
 
 function route() {
   const raw = location.hash.slice(1) || '/';
