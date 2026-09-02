@@ -6,7 +6,7 @@ import type { ReportRecord, SectionRecord } from '../../lib/types';
 
 type Env = {
   DB: D1Database;
-  REPORTS_BUCKET: R2Bucket;
+  REPORTS_BUCKET: KVNamespace;
   FRONTEND_ORIGIN: string;
 };
 
@@ -123,8 +123,8 @@ async function upload(request: Request, env: Env) {
   const mimeType = pdf ? 'application/pdf' : 'text/html';
   const headings = parsed.sections.map((section) => section.heading).filter(Boolean).join('\n');
 
-  await env.REPORTS_BUCKET.put(originalKey, bytes, { httpMetadata: { contentType: mimeType } });
-  if ('sanitizedHtml' in parsed) await env.REPORTS_BUCKET.put(sanitizedKey, parsed.sanitizedHtml, { httpMetadata: { contentType: 'text/html; charset=utf-8' } });
+  await env.REPORTS_BUCKET.put(originalKey, bytes.slice().buffer);
+  if ('sanitizedHtml' in parsed) await env.REPORTS_BUCKET.put(sanitizedKey, parsed.sanitizedHtml);
   const statements: D1PreparedStatement[] = [];
   if (current) statements.push(env.DB.prepare('UPDATE reports SET is_current=0 WHERE id=?').bind(current.id));
   statements.push(env.DB.prepare(`INSERT INTO reports (id,iso_year,iso_week,version_number,title,report_date,author_name,department,tags_json,original_filename,original_key,sanitized_key,mime_type,size_bytes,sha256,plain_text,is_current,supersedes_report_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)`).bind(id, isoYear, isoWeek, version, title, reportDate, String(form.get('authorName') || '').trim().slice(0, 100) || null, String(form.get('department') || '').trim().slice(0, 100) || null, JSON.stringify(tags), file.name, originalKey, sanitizedKey, mimeType, file.size, digest, parsed.plainText, current?.id || null));
@@ -169,23 +169,27 @@ async function handle(request: Request, env: Env) {
       ]);
       return json(request, env, { report, sections: sections.results, versions: versions.results });
     }
-    const object = await env.REPORTS_BUCKET.get(report.original_key);
-    if (!object) return new Response('Not found', { status: 404 });
     const headers = new Headers(corsHeaders(request, env));
     headers.set('X-Content-Type-Options', 'nosniff');
     if (match[2] === 'download') {
+      const object = await env.REPORTS_BUCKET.get(report.original_key, 'stream');
+      if (!object) return new Response('Not found', { status: 404 });
       headers.set('Content-Type', 'application/octet-stream');
       headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(report.original_filename)}`);
-      return new Response(object.body, { headers });
+      return new Response(object, { headers });
     }
     headers.set('Content-Disposition', `inline; filename="preview.${report.mime_type === 'application/pdf' ? 'pdf' : 'html'}"`);
     if (report.mime_type === 'application/pdf') {
+      const object = await env.REPORTS_BUCKET.get(report.original_key, 'stream');
+      if (!object) return new Response('Not found', { status: 404 });
       headers.set('Content-Type', 'application/pdf');
-      return new Response(object.body, { headers });
+      return new Response(object, { headers });
     }
+    const object = await env.REPORTS_BUCKET.get(report.original_key, 'text');
+    if (!object) return new Response('Not found', { status: 404 });
     headers.set('Content-Type', 'text/html; charset=utf-8');
     headers.set('Content-Security-Policy', `default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors ${env.FRONTEND_ORIGIN}; base-uri 'none'; form-action 'none'`);
-    return new Response(sanitizeReportHtml(await object.text()), { headers });
+    return new Response(sanitizeReportHtml(object), { headers });
   }
   return error(request, env, 'NOT_FOUND', '接口不存在。', 404);
 }
