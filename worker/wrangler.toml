@@ -2,17 +2,19 @@ name = "hongkou-weekly-report-api"
 main = "src/index.ts"
 compatibility_date = "2026-05-22"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+preview_urls = false
 
 # 首次部署前运行 scripts/cloudflare-setup.ps1，并把生成的数据库 ID 填到下方。
 [[d1_databases]]
 binding = "DB"
 database_name = "hongkou-weekly-report"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "ad01ea78-b846-4844-afa4-10dacfaa7e34"
 
-[[r2_buckets]]
+[[kv_namespaces]]
 binding = "REPORTS_BUCKET"
-bucket_name = "hongkou-weekly-reports"
+id = "52d1ae3d23164de1bf3483d9c59057c9"
 
 [vars]
 # 正式发布后改成 GitHub Pages 或自定义域名的完整来源地址，不要带末尾斜杠。
-FRONTEND_ORIGIN = "https://REPLACE_WITH_GITHUB_USER.github.io"
+FRONTEND_ORIGIN = "https://jerryyou999.github.io"
