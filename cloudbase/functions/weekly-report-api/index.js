@@ -147,6 +147,7 @@ function sourceKey(context, event = {}) {
   const source = cloudContext.TCB_SOURCE_IP
     || cloudContext.WX_CLIENTIP
     || context?.requestContext?.sourceIp
+    || event.requestContext?.sourceIp
     || (typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : '')
     || cloudContext.TCB_UUID
     || 'anonymous';
@@ -363,7 +364,10 @@ async function httpMain(event = {}, context = {}) {
   }
   if (event.httpMethod && event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify(fail(new PublicError('METHOD_NOT_ALLOWED', '只支持 POST 请求。'))) };
   let result;
-  try { result = await dispatch(parseHttpBody(event), context); } catch (error) { result = fail(error); }
+  try {
+    const payload = parseHttpBody(event);
+    result = await dispatch({ ...payload, headers: event.headers, requestContext: event.requestContext }, context);
+  } catch (error) { result = fail(error); }
   return { statusCode: result.success ? 200 : 400, headers, body: JSON.stringify(result) };
 }
 
