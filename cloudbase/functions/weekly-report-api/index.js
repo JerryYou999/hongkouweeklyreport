@@ -99,7 +99,7 @@ function normalizeReport(input) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new PublicError('INVALID_METADATA', '周报标识无效。');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) throw new PublicError('INVALID_REPORT_DATE', '请填写有效的周报日期。');
   if (!['text/html', 'application/pdf'].includes(mimeType)) throw new PublicError('UNSUPPORTED_FILE_TYPE', '只支持 HTML、HTM 或 PDF 文件。');
-  if (!Number.isInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > MAX_UPLOAD_BYTES) throw new PublicError('FILE_TOO_LARGE', '文件不能为空且不能超过 10 MB。');
+  if (!Number.isInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > MAX_UPLOAD_BYTES) throw new PublicError('FILE_TOO_LARGE', '文件不能为空且不能超过 5 MB。');
   if (!/^[0-9a-f]{64}$/.test(sha256)) throw new PublicError('INVALID_METADATA', '文件摘要无效。');
   if (originalFilePath !== uploadFilePath(id, mimeType)) throw new PublicError('INVALID_FILE_ID', '云存储文件路径无效。');
 
@@ -173,7 +173,7 @@ async function prepareUpload(event, context) {
   const sizeBytes = Number(event.sizeBytes);
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new PublicError('INVALID_METADATA', '周报标识无效。');
   if (!['text/html', 'application/pdf'].includes(mimeType)) throw new PublicError('UNSUPPORTED_FILE_TYPE', '只支持 HTML、HTM 或 PDF 文件。');
-  if (!Number.isInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > MAX_UPLOAD_BYTES) throw new PublicError('FILE_TOO_LARGE', '文件不能为空且不能超过 10 MB。');
+  if (!Number.isInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > MAX_UPLOAD_BYTES) throw new PublicError('FILE_TOO_LARGE', '文件不能为空且不能超过 5 MB。');
   await enforceUploadLimit(context, event);
   const path = uploadFilePath(id, mimeType);
   const result = await storage().createSignedUploadUrl(path, { upsert: true });
