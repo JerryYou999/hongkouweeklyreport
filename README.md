@@ -5,42 +5,42 @@
 ## 功能
 
 - 公开上传 HTML、HTM、PDF，单文件最大 10 MB；
-- HTML 脚本、事件处理器、表单、iframe 和外部图片自动清理；
+- HTML 原文件与原始样式完整保留，预览在浏览器沙箱中禁用脚本和表单提交；
 - PDF 按页提取文本并直接预览；
 - 中文、英文和中英文混合全文搜索；
 - 依据周报日期计算 ISO 年份与周数；
 - 同周版本化覆盖、历史版本留存；
 - SHA-256 文件去重；
-- IP 和全站每日上传限速；
+- 单一来源每日上传限速；
 - 页面默认 `noindex`，避免搜索引擎收录。
 
 扫描版 PDF 没有可检索文本层，V1 不提供 OCR。
 
 ## 本地开发
 
-```bash
+```powershell
 npm install
-npm run dev
+npm run github:dev
 ```
 
-开发服务器会打印本地访问地址。数据存储在本地 D1/R2 模拟环境中。
+开发服务器会打印本地访问地址。需要先按 `cloudbase/README.md` 配置本地 CloudBase 环境变量。
 
 ## 验证
 
-```bash
+```powershell
 npm run typecheck
 npm run lint
 npm test
-npm run build
+npm run github:build
 ```
 
 ## 数据与文件
 
-- D1：周报元数据、版本、搜索正文、章节和限速计数；
-- R2：原始 HTML/PDF 与清洗后的 HTML；
-- FTS5 trigram：中文、多语言和局部字符串检索。
+- CloudBase 文档数据库：周报元数据、版本、搜索正文、章节标题和限速计数；
+- CloudBase 云存储：原始 HTML/PDF；
+- CloudBase 云函数：关键词包含检索、版本号分配和上传校验。
 
-数据库结构位于 `db/schema.ts`，首个迁移位于 `migrations/0001_initial.sql`。
+CloudBase 部署和安全配置位于 `cloudbase/`。原 Cloudflare Worker 代码暂时保留，便于迁移期间回退。
 
 ## 版本规则
 
@@ -48,4 +48,4 @@ npm run build
 
 ## 安全边界
 
-本项目按需求不设置登录或上传权限，因此任何知道网站地址的人都可以查看、搜索和上传。在线预览只展示清洗后的 HTML 或浏览器 PDF 阅读器；原始 HTML 不会在主页面上下文中执行。
+本项目按需求不显示登录或上传权限，因此任何知道网站地址的人都可以查看、搜索和上传。浏览器会在后台建立匿名会话，用于 CloudBase 防滥用和文件归属；用户不需要注册或操作登录。HTML 原文件只在隔离的 iframe 中预览，不会在主页面上下文中执行脚本。

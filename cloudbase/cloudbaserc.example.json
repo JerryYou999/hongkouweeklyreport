@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "envId": "请替换为你的-CloudBase-环境-ID",
+  "functionRoot": "cloudbase/functions",
+  "functions": [
+    {
+      "name": "weekly-report-api",
+      "handler": "index.main",
+      "runtime": "Nodejs18.15",
+      "timeout": 3,
+      "memorySize": 256,
+      "installDependency": true,
+      "dir": "cloudbase/functions/weekly-report-api",
+      "triggers": [],
+      "ignore": ["node_modules/**", ".git/**"]
+    }
+  ]
+}

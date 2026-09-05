@@ -27,9 +27,21 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Check CloudBase deployment settings
+        env:
+          CLOUDBASE_ENV_ID: ${{ vars.CLOUDBASE_ENV_ID }}
+          CLOUDBASE_ACCESS_KEY: ${{ secrets.CLOUDBASE_ACCESS_KEY }}
+        run: |
+          if [ -z "$CLOUDBASE_ENV_ID" ] || [ -z "$CLOUDBASE_ACCESS_KEY" ]; then
+            echo "CloudBase deployment settings are missing; keeping the last successful Pages deployment."
+            exit 1
+          fi
       - name: Build static website
         env:
-          VITE_API_BASE_URL: https://hongkou-weekly-report-api.jerryyou999.workers.dev
+          VITE_CLOUDBASE_ENV_ID: ${{ vars.CLOUDBASE_ENV_ID }}
+          VITE_CLOUDBASE_REGION: ${{ vars.CLOUDBASE_REGION }}
+          VITE_CLOUDBASE_FUNCTION_NAME: weekly-report-api
+          VITE_CLOUDBASE_ACCESS_KEY: ${{ secrets.CLOUDBASE_ACCESS_KEY }}
         run: npm run github:build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

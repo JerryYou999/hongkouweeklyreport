@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
+    "@cloudbase/js-sdk": "^3.9.2",
     "@shadcn/react": "0.3.0",
     "cheerio": "^1.2.0",
     "class-variance-authority": "0.7.1",
@@ -64,6 +65,10 @@
     "vite": "^8.2.2",
     "vitest": "^4.1.11",
     "wrangler": "4.92.0"
+  },
+  "overrides": {
+    "esbuild": "0.28.2",
+    "ws": "8.21.3"
   },
   "type": "module"
 }
