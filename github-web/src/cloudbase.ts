@@ -93,7 +93,9 @@ export async function searchReports(params: URLSearchParams) {
 }
 
 export async function getReport(id: string) {
-  return invoke<{ report: CloudBaseReport; sections: CloudBaseSection[]; versions: CloudBaseReport[] }>('getReport', { id });
+  const data = await invoke<{ report: CloudBaseReport; sections: CloudBaseSection[]; versions: CloudBaseReport[] }>('getReport', { id });
+  data.report.preview_url = `${apiUrl}?preview=${encodeURIComponent(id)}`;
+  return data;
 }
 
 export async function uploadOriginalFile(file: File, reportId: string, mimeType: 'text/html' | 'application/pdf') {

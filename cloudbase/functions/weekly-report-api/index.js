@@ -300,10 +300,38 @@ async function getReport(event) {
     temporaryUrl(report.original_file_path),
   ]);
   return ok({
-    report: { ...publicFields(report), preview_url: fileUrl, download_url: fileUrl },
+    report: { ...publicFields(report), preview_url: null, download_url: fileUrl },
     sections: jsonValue(report.section_headings, []),
     versions: pgData(versionsResult).map((version) => publicFields(version)),
   });
+}
+
+async function servePreview(event) {
+  const id = cleanString(event.queryStringParameters?.preview, 64);
+  if (!id) throw new PublicError('NOT_FOUND', '没有找到这份周报。');
+  const report = pgData(await db.from(REPORTS).select('mime_type,original_file_path').eq('id', id).maybeSingle());
+  if (!report) throw new PublicError('NOT_FOUND', '没有找到这份周报。');
+  const downloaded = await storage().download(report.original_file_path);
+  if (downloaded.error || !downloaded.data) {
+    console.error('storage_preview_download_failed', downloaded.error);
+    throw new PublicError('FILE_NOT_FOUND', '周报文件暂时无法访问。');
+  }
+  const source = downloaded.data;
+  const body = Buffer.isBuffer(source)
+    ? source
+    : Buffer.from(typeof source.arrayBuffer === 'function' ? await source.arrayBuffer() : source);
+  const contentType = report.mime_type === 'application/pdf' ? 'application/pdf' : 'text/html; charset=utf-8';
+  return {
+    statusCode: 200,
+    headers: {
+      ...httpHeaders(event),
+      'Content-Type': contentType,
+      'Content-Disposition': 'inline',
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    },
+    body,
+  };
 }
 
 async function finalizeUpload(event) {
@@ -357,6 +385,16 @@ function parseHttpBody(event) {
 async function httpMain(event = {}, context = {}) {
   const headers = httpHeaders(event);
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
+  if (event.rawPreview) {
+    if (event.httpMethod !== 'GET') return { statusCode: 405, headers, body: JSON.stringify(fail(new PublicError('METHOD_NOT_ALLOWED', '预览仅支持 GET 请求。'))) };
+    try {
+      ensureCloudBase();
+      return await servePreview(event);
+    } catch (error) {
+      const result = fail(error);
+      return { statusCode: 400, headers, body: JSON.stringify(result) };
+    }
+  }
   if (event.rawUpload) {
     if (event.httpMethod !== 'PUT') return { statusCode: 405, headers, body: JSON.stringify(fail(new PublicError('METHOD_NOT_ALLOWED', '上传仅支持 PUT 请求。'))) };
     const result = await dispatch({ action: 'proxyUpload', event }, context);

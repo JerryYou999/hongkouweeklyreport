@@ -11,12 +11,14 @@ const server = http.createServer(async (request, response) => {
   for await (const chunk of request) chunks.push(chunk);
   const requestUrl = new URL(request.url || '/', 'http://localhost');
   const rawUpload = requestUrl.searchParams.get('upload') === '1';
+  const rawPreview = Boolean(requestUrl.searchParams.get('preview'));
   const event = {
     httpMethod: request.method,
     headers: request.headers,
     body: rawUpload ? Buffer.concat(chunks).toString('base64') : Buffer.concat(chunks).toString('utf8'),
     isBase64Encoded: rawUpload,
     rawUpload,
+    rawPreview,
     queryStringParameters: Object.fromEntries(requestUrl.searchParams.entries()),
     requestContext: { sourceIp: request.socket.remoteAddress },
   };

@@ -66,6 +66,34 @@ function ReportCard({ report, query = '' }: { report: Report; query?: string }) 
 function Loading({ text = '正在加载…' }: { text?: string }) { return <div className="state">{text}</div>; }
 function ErrorState({ message }: { message: string }) { return <div className="state error">{message}</div>; }
 
+function PreviewFrame({ report }: { report: Report }) {
+  const [src, setSrc] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let objectUrl = '';
+    setSrc(''); setError('');
+    const previewUrl = report.preview_url;
+    if (!previewUrl) {
+      setError('预览地址暂时不可用。');
+      return undefined;
+    }
+    fetch(previewUrl)
+      .then((response) => {
+        if (!response.ok) throw new Error('预览文件暂时无法加载。');
+        return response.blob();
+      })
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(new Blob([blob], { type: report.mime_type }));
+        setSrc(objectUrl);
+      })
+      .catch((reason) => setError(reason instanceof Error ? reason.message : '预览文件暂时无法加载。'));
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [report.id, report.mime_type, report.preview_url]);
+  if (error) return <ErrorState message={error} />;
+  if (!src) return <Loading text="正在加载安全预览…" />;
+  return <iframe title={`${report.title}预览`} src={src} sandbox={report.mime_type === 'application/pdf' ? undefined : 'allow-popups allow-popups-to-escape-sandbox'} />;
+}
+
 function useReports(limit = 100) {
   const [reports, setReports] = useState<Report[] | null>(null);
   const [error, setError] = useState('');
@@ -199,7 +227,7 @@ function ReportDetail({ id }: { id: string }) {
   const { report, sections, versions } = data;
   return <Layout><main className="shell section"><a className="muted" href="#/reports">← 返回历史周报</a><div className="detail-grid"><article>
     <div className="card detail-head"><p className="eyebrow">{report.iso_year} 年第 {report.iso_week} 周 · {report.report_date} · {report.mime_type === 'application/pdf' ? 'PDF' : 'HTML'}</p><h1>{report.title}</h1><p className="muted">{[report.author_name, report.department].filter(Boolean).join(' · ')}</p><Tags value={report.tags_json} /><div className="actions"><a href={report.download_url} download={report.original_filename}>下载原文件</a><span>当前 V{report.version_number}</span></div></div>
-    <div className="card preview"><div className="preview-bar"><span>安全预览</span><span>{report.mime_type === 'application/pdf' ? 'PDF 阅读器' : '保留原始样式 · 已禁用脚本'}</span></div><iframe title={`${report.title}预览`} src={report.preview_url} sandbox={report.mime_type === 'application/pdf' ? undefined : 'allow-popups allow-popups-to-escape-sandbox'} /></div>
+    <div className="card preview"><div className="preview-bar"><span>安全预览</span><span>{report.mime_type === 'application/pdf' ? 'PDF 阅读器' : '保留原始样式 · 已禁用脚本'}</span></div><PreviewFrame report={report} /></div>
   </article><aside><div className="card side"><h2>版本历史</h2>{versions.map((v) => <a className={v.id === report.id ? 'active' : ''} key={v.id} href={`#/reports/${v.id}`}><span>V{v.version_number}</span><small>{v.created_at.slice(0, 10)}</small></a>)}</div><div className="card side"><h2>内容索引</h2>{sections.slice(0, 30).map((s) => <p key={s.id}>{s.heading || `内容片段 ${s.order_index + 1}`}</p>)}</div></aside></div>
   </main></Layout>;
 }
