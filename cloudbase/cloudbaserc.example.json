@@ -7,12 +7,26 @@
       "name": "weekly-report-api",
       "handler": "index.main",
       "runtime": "Nodejs18.15",
-      "timeout": 3,
+      "timeout": 15,
       "memorySize": 256,
+      "envVariables": {
+        "CLOUDBASE_APIKEY": "{{env.CLOUDBASE_APIKEY}}",
+        "CLOUDBASE_ENV_ID": "请替换为你的-CloudBase-环境-ID"
+      },
       "installDependency": true,
       "dir": "cloudbase/functions/weekly-report-api",
       "triggers": [],
       "ignore": ["node_modules/**", ".git/**"]
     }
-  ]
+  ],
+  "gateway": {
+    "routes": [
+      {
+        "path": "/api/weekly-report",
+        "target": "function:weekly-report-api",
+        "enableAuth": false,
+        "enableSafeDomain": false
+      }
+    ]
+  }
 }

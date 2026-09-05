@@ -31,6 +31,7 @@ yarn-error.log*
 .env*
 !github-web/.env.cloudbase.example
 cloudbaserc.json
+.tcb/
 
 # deployment and generated files
 .vercel

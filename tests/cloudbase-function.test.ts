@@ -2,7 +2,8 @@ import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 
 const require = createRequire(import.meta.url);
-const { getIsoWeek, normalizeReport, makeExcerpt } = require('../cloudbase/functions/weekly-report-api')._test;
+const cloudFunction = require('../cloudbase/functions/weekly-report-api');
+const { getIsoWeek, normalizeReport, makeExcerpt } = cloudFunction._test;
 
 function validReport() {
   const id = '123e4567-e89b-12d3-a456-426614174000';
@@ -19,7 +20,7 @@ function validReport() {
     sha256: 'a'.repeat(64),
     plainText: '这是用于检索的周报正文。',
     sectionHeadings: [{ id: 'part-one', heading: '第一部分' }],
-    originalFileId: `cloud://test.bucket/weekly-reports/${id}/original.html`,
+    originalFileId: `reports/${id}/original.html`,
   };
 }
 
@@ -36,7 +37,7 @@ describe('CloudBase weekly report function', () => {
   });
 
   it('rejects a file ID outside the allocated report path', () => {
-    expect(() => normalizeReport({ ...validReport(), originalFileId: 'cloud://test.bucket/other/file.html' }))
+    expect(() => normalizeReport({ ...validReport(), originalFileId: 'other/file.html' }))
       .toThrow('云存储文件路径无效');
   });
 
@@ -46,5 +47,14 @@ describe('CloudBase weekly report function', () => {
     expect(excerpt).toContain('社区治理');
     expect(excerpt.length).toBeLessThanOrEqual(422);
     expect(excerpt.startsWith('…')).toBe(true);
+  });
+
+  it('answers HTTP preflight without invoking CloudBase resources', async () => {
+    const response = await cloudFunction.main({
+      httpMethod: 'OPTIONS',
+      headers: { origin: 'https://jerryyou999.github.io' },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(response.headers['Access-Control-Allow-Origin']).toBe('https://jerryyou999.github.io');
   });
 });

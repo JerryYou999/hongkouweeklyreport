@@ -1,12 +1,3 @@
-import cloudbase from '@cloudbase/js-sdk/app';
-import { registerAuth } from '@cloudbase/js-sdk/auth';
-import { registerFunctions } from '@cloudbase/js-sdk/functions';
-import { registerStorage } from '@cloudbase/js-sdk/storage';
-
-registerAuth(cloudbase);
-registerFunctions(cloudbase);
-registerStorage(cloudbase);
-
 export type CloudBaseReport = {
   id: string;
   iso_year: number;
@@ -55,62 +46,38 @@ type UploadMetadata = {
   originalFileId: string;
 };
 
-const envId = String(import.meta.env.VITE_CLOUDBASE_ENV_ID || '').trim();
-const accessKey = String(import.meta.env.VITE_CLOUDBASE_ACCESS_KEY || '').trim();
-const region = String(import.meta.env.VITE_CLOUDBASE_REGION || 'ap-shanghai').trim();
-const functionName = String(import.meta.env.VITE_CLOUDBASE_FUNCTION_NAME || 'weekly-report-api').trim();
-
-const configured = Boolean(envId && accessKey);
-const app = configured
-  ? cloudbase.init({ env: envId, accessKey, region, persistence: 'local', auth: { detectSessionInUrl: true } })
-  : null;
-
-let readyPromise: Promise<void> | null = null;
+const apiUrl = String(import.meta.env.VITE_WEEKLY_REPORT_API_URL || '').trim();
 
 export function isCloudBaseConfigured() {
-  return configured;
+  return Boolean(apiUrl);
 }
 
 function configurationError() {
-  return new Error('CloudBase 尚未完成配置。请先在 GitHub Actions 中设置环境 ID 和 Publishable Key。');
-}
-
-async function ensureReady() {
-  if (!app) throw configurationError();
-  if (!readyPromise) {
-    readyPromise = (async () => {
-      const authFactory = app.auth;
-      if (!authFactory) throw new Error('CloudBase 身份认证模块没有加载。');
-      const auth = authFactory({ persistence: 'local' });
-      const state = await auth.getLoginState().catch(() => null);
-      if (!state) {
-        const response = await auth.signInAnonymously();
-        if (response.error) throw new Error(response.error.message || 'CloudBase 匿名会话建立失败。');
-      }
-    })().catch((error) => {
-      readyPromise = null;
-      throw error;
-    });
-  }
-  await readyPromise;
+  return new Error('CloudBase HTTP 服务尚未完成配置。请在 GitHub Actions 中设置周报 API 地址。');
 }
 
 function unwrap<T>(value: unknown): T {
   const envelope = value as FunctionEnvelope<T>;
   if (!envelope?.success || envelope.data === undefined) {
-    throw new Error(envelope?.error?.message || 'CloudBase 请求失败，请稍后重试。');
+    throw new Error(envelope?.error?.message || '周报服务请求失败，请稍后重试。');
   }
   return envelope.data;
 }
 
 async function invoke<T>(action: string, payload: Record<string, unknown> = {}) {
-  await ensureReady();
-  if (!app?.callFunction) throw new Error('CloudBase 云函数模块没有加载。');
-  const response = await app.callFunction({
-    name: functionName,
-    data: { action, ...payload },
+  if (!apiUrl) throw configurationError();
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...payload }),
   });
-  return unwrap<T>(response.result as FunctionEnvelope<T>);
+  let body: FunctionEnvelope<T>;
+  try {
+    body = await response.json() as FunctionEnvelope<T>;
+  } catch {
+    throw new Error('周报服务返回了无效响应，请稍后重试。');
+  }
+  return unwrap<T>(body);
 }
 
 export async function listReports(limit = 100) {
@@ -130,25 +97,28 @@ export async function getReport(id: string) {
 }
 
 export async function uploadOriginalFile(file: File, reportId: string, mimeType: 'text/html' | 'application/pdf') {
-  await ensureReady();
-  if (!app?.storage) throw new Error('CloudBase 云存储模块没有加载。');
-  const extension = mimeType === 'application/pdf' ? 'pdf' : 'html';
-  const normalized = file.type === mimeType
-    ? file
-    : new File([file], `original.${extension}`, { type: mimeType, lastModified: file.lastModified });
-  const response = await app.storage.from().upload(
-    `weekly-reports/${reportId}/original.${extension}`,
-    normalized,
-    { contentType: mimeType, upsert: false },
-  );
-  if (response.error) throw new Error(response.error.message || 'CloudBase 文件上传失败。');
-  if (!response.data.id) throw new Error('文件已经上传，但 CloudBase 没有返回文件标识。');
-  return response.data.id;
+  const ticket = await invoke<{ fileId: string; signedUrl: string; uploadToken: string | null }>('prepareUpload', {
+    id: reportId,
+    mimeType,
+    sizeBytes: file.size,
+  });
+  if (!ticket.uploadToken) throw new Error('云存储没有返回上传凭据，请稍后重试。');
+  const uploadUrl = new URL(apiUrl);
+  uploadUrl.searchParams.set('upload', '1');
+  uploadUrl.searchParams.set('path', ticket.fileId);
+  uploadUrl.searchParams.set('token', ticket.uploadToken);
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': mimeType },
+    body: file,
+  });
+  if (!response.ok) throw new Error('文件上传到云存储失败，请稍后重试。');
+  return ticket.fileId;
 }
 
 export async function removeUploadedFile(fileId: string) {
-  if (!app?.storage || !fileId) return;
-  await app.storage.from().remove([fileId]).catch(() => undefined);
+  if (!fileId) return;
+  await invoke('discardUpload', { fileId }).catch(() => undefined);
 }
 
 export async function finalizeUpload(metadata: UploadMetadata) {
