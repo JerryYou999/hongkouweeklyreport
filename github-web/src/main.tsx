@@ -15,7 +15,7 @@ import './styles.css';
 
 type Report = CloudBaseReport;
 type Section = CloudBaseSection;
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 function route() {
   const raw = location.hash.slice(1) || '/';
@@ -86,7 +86,7 @@ function Home() {
       <h1>虹口区区域深耕周报，<em>随时可以找到。</em></h1>
       <p className="lead">上传 HTML 或 PDF 周报，自动归档并建立全文索引。按关键词、日期或标签快速定位过去的真实内容。</p>
       <form className="searchbar" onSubmit={submit}><input name="q" type="search" placeholder="搜索关键词，例如：项目进展、社区治理" /><button>搜索</button></form>
-    </div><aside className="upload-panel"><span className="file-pill">HTML / PDF · 最大 10 MB</span><h2>上传本周周报</h2><p>同一周再次上传会创建新版本，旧版本仍会安全保留。</p><a href="#/upload">选择文件并上传 →</a></aside></div></section>
+    </div><aside className="upload-panel"><span className="file-pill">HTML / PDF · 最大 5 MB</span><h2>上传本周周报</h2><p>同一周再次上传会创建新版本，旧版本仍会安全保留。</p><a href="#/upload">选择文件并上传 →</a></aside></div></section>
     <section className="shell section"><div className="section-title"><div><p className="eyebrow">LATEST REPORTS</p><h2>最近归档</h2></div><a href="#/reports">查看全部 →</a></div>
       {error ? <ErrorState message={error} /> : !reports ? <Loading /> : reports.length ? <div className="grid">{reports.map((r) => <ReportCard key={r.id} report={r} />)}</div> : <Loading text="还没有归档周报，上传第一份周报即可开始。" />}
     </section>
@@ -130,7 +130,7 @@ function Upload() {
     if (!file) return setStatus('请先选择 HTML 或 PDF 文件。');
     if (!isCloudBaseConfigured()) return setStatus('CloudBase 尚未完成配置，请先完成部署设置。');
     if (!file.size) return setStatus('上传文件不能为空。');
-    if (file.size > MAX_UPLOAD_BYTES) return setStatus('文件不能超过 10 MB。');
+    if (file.size > MAX_UPLOAD_BYTES) return setStatus('文件不能超过 5 MB。');
     setBusy(true); setStatus('正在本机提取文字并建立索引…');
     const form = new FormData(event.currentTarget);
     let uploadedFileId = '';
@@ -183,7 +183,7 @@ function Upload() {
     } finally { setBusy(false); }
   }
   return <Layout><main className="shell narrow section"><p className="eyebrow">UPLOAD REPORT</p><h1 className="page-title">上传虹口区区域深耕周报</h1><p className="muted">系统按日期计算 ISO 周数。同一周再次上传会生成新版本并保留旧版本。</p>
-    <form className="card upload-form" onSubmit={submit}><label className="drop"><strong>{file?.name || '选择 HTML 或 PDF 周报'}</strong><span>支持 .html、.htm、.pdf，最大 10 MB</span><input name="file" type="file" accept=".html,.htm,.pdf,text/html,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
+    <form className="card upload-form" onSubmit={submit}><label className="drop"><strong>{file?.name || '选择 HTML 或 PDF 周报'}</strong><span>支持 .html、.htm、.pdf，最大 5 MB</span><input name="file" type="file" accept=".html,.htm,.pdf,text/html,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
       <div className="form-grid"><label>周报标题<input name="title" maxLength={200} placeholder="留空时自动读取文件标题" /></label><label>周报日期 *<input name="reportDate" type="date" required /></label><label>作者<input name="authorName" maxLength={100} placeholder="选填" /></label><label>部门<input name="department" maxLength={100} placeholder="选填" /></label><label>标签<input name="tags" maxLength={500} placeholder="用逗号分隔" /></label></div>
       <div className="submit-row"><span>{status}</span><button disabled={busy}>{busy ? '正在处理…' : '上传并归档'}</button></div>
     </form><p className="hint">PDF 必须包含可复制的文本层；扫描版暂不支持 OCR。HTML 会保留原始排版与装饰，预览时会在沙箱中禁用脚本和表单提交。</p>
